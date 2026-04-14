@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vidoflix - Login</title>
+<link rel="icon" href="https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.ico">
+
+<style>
+    /* RESET & BASE */
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        background: #000;
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        /* Netflix-style Background Image with Overlay */
+        background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://i.pinimg.com/736x/eb/f1/4a/ebf14a5d3b21e60b907ae26b90205271.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+
+    /* LOGIN BOX */
+    .box {
+        width: 100%;
+        max-width: 450px;
+        padding: 60px 68px 40px;
+        background: rgba(0, 0, 0, 0.75); /* Semi-transparent black */
+        border-radius: 4px;
+        margin: 20px;
+        min-height: 500px;
+    }
+
+    h2 {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 28px;
+    }
+
+    /* INPUT FIELDS */
+    .input-group {
+        position: relative;
+        margin-bottom: 16px;
+    }
+
+    input {
+        width: 100%;
+        height: 50px;
+        background: #333;
+        border: 0;
+        border-radius: 4px;
+        color: #fff;
+        padding: 16px 20px 0;
+        font-size: 16px;
+        outline: none;
+    }
+
+    input:focus {
+        background: #454545;
+        border-bottom: 2px solid #b20710; /* Netflix Red Focus */
+    }
+
+    /* Floating Label Logic */
+    label {
+        position: absolute;
+        left: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #8c8c8c;
+        font-size: 16px;
+        pointer-events: none;
+        transition: all 0.1s ease;
+    }
+
+    /* Move label up when input has value or focus */
+    input:focus + label,
+    input:not(:placeholder-shown) + label {
+        top: 7px;
+        transform: translateY(0);
+        font-size: 11px;
+    }
+
+    /* BUTTON */
+    button {
+        width: 100%;
+        padding: 16px;
+        margin-top: 24px;
+        border: none;
+        border-radius: 4px;
+        background: #e50914;
+        color: white;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    button:hover {
+        background: #f40612;
+    }
+    
+    button:disabled {
+        background: #8c8c8c;
+        cursor: not-allowed;
+    }
+
+    /* TOGGLE TEXT */
+    .toggle-container {
+        margin-top: 16px;
+        color: #737373;
+        font-size: 16px;
+    }
+
+    .toggle-link {
+        color: white;
+        cursor: pointer;
+        margin-left: 5px;
+    }
+    .toggle-link:hover { text-decoration: underline; }
+
+    .hidden { display: none; }
+
+    /* RESPONSIVE */
+    @media (max-width: 740px) {
+        body { background: #000; } /* Solid black on mobile */
+        .box { 
+            background: #000; 
+            padding: 20px; 
+            min-height: auto;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="box">
+    <h2 id="title">Sign In</h2>
+
+    <!-- Name Input (Hidden by default) -->
+    <div id="name-group" class="input-group hidden">
+        <input id="name" type="text" placeholder=" " autocomplete="off">
+        <label>Name</label>
+    </div>
+
+    <!-- Email Input -->
+    <div class="input-group">
+        <input id="email" type="email" placeholder=" " autocomplete="email">
+        <label>Email or phone number</label>
+    </div>
+
+    <!-- Password Input -->
+    <div class="input-group">
+        <input id="password" type="password" placeholder=" " autocomplete="current-password">
+        <label>Password</label>
+    </div>
+
+    <button id="submit-btn" onclick="auth()">Sign In</button>
+
+    <div class="toggle-container">
+        <span id="toggle-text">New to Vidoflix?</span>
+        <span class="toggle-link" onclick="toggle()">Sign up now.</span>
+    </div>
+</div>
+
+<script>
+const API = "http://localhost:5000/api";
+let isLogin = true;
+
+/* =========================
+   SAFE AUTO REDIRECT
+========================= */
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
+
+if (token && role) {
+    // Optional: Add a check to verify token validity here if needed
+    if (role === "admin") {
+        window.location.href = "admin.html";
+    } else {
+        window.location.href = "index.html";
+    }
+}
+
+/* =========================
+   TOGGLE LOGIN / REGISTER
+========================= */
+function toggle() {
+    isLogin = !isLogin;
+
+    const title = document.getElementById("title");
+    const nameGroup = document.getElementById("name-group");
+    const submitBtn = document.getElementById("submit-btn");
+    const toggleText = document.getElementById("toggle-text");
+    const toggleLink = document.querySelector(".toggle-link");
+
+    if (isLogin) {
+        title.innerText = "Sign In";
+        submitBtn.innerText = "Sign In";
+        nameGroup.classList.add("hidden");
+        toggleText.innerText = "New to Vidoflix?";
+        toggleLink.innerText = "Sign up now.";
+    } else {
+        title.innerText = "Sign Up";
+        submitBtn.innerText = "Sign Up";
+        nameGroup.classList.remove("hidden");
+        toggleText.innerText = "Already have an account?";
+        toggleLink.innerText = "Sign in.";
+    }
+}
+
+/* =========================
+   AUTH FUNCTION
+========================= */
+async function auth() {
+    const nameInput = document.getElementById("name");
+    const emailInput = document.getElementById("email");
+    const passInput = document.getElementById("password");
+    const btn = document.getElementById("submit-btn");
+
+    const name = nameInput.value.trim();
+    const email = emailInput.value.trim();
+    const password = passInput.value.trim();
+
+    // Validation
+    if (!email || !password) {
+        alert("Please fill in all required fields.");
+        return;
+    }
+    if (!isLogin && !name) {
+        alert("Name is required for registration.");
+        return;
+    }
+
+    // UI Loading State
+    btn.disabled = true;
+    btn.innerText = isLogin ? "Signing In..." : "Signing Up...";
+
+    const url = isLogin ? "/auth/login" : "/auth/register";
+    const body = isLogin
+        ? { email, password }
+        : { name, email, password };
+
+    try {
+        const res = await fetch(API + url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        console.log("AUTH RESPONSE:", data);
+
+        if (!res.ok) {
+            throw new Error(data.message || "Authentication failed");
+        }
+
+        if (isLogin) {
+            if (!data.token) {
+                throw new Error("Token missing from server response");
+            }
+
+            // Save Data
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("role", data.role || "user");
+
+            // Redirect
+            if (data.role === "admin") {
+                window.location.href = "admin.html";
+            } else {
+                window.location.href = "index.html";
+            }
+
+        } else {
+            // Registration Success
+            alert("Registration successful! Please sign in.");
+            toggle(); // Switch back to login view
+            // Clear inputs
+            nameInput.value = "";
+            passInput.value = "";
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert(err.message || "Server connection error. Is the backend running?");
+    } finally {
+        // Reset Button
+        btn.disabled = false;
+        btn.innerText = isLogin ? "Sign In" : "Sign Up";
+    }
+}
+</script>
+
+</body>
+</html>

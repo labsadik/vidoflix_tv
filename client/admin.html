@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vidoflix Admin Dashboard</title>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Custom Config -->
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    netflix: '#E50914',
+                    netflixHover: '#B20710',
+                    dark: '#141414',
+                    darker: '#0b0b0b',
+                    card: '#1f1f1f'
+                }
+            }
+        }
+    }
+</script>
+
+<style>
+    body { background-color: #141414; color: white; font-family: 'Helvetica Neue', Arial, sans-serif; }
+    
+    /* Modal Animation */
+    .modal-enter { opacity: 0; transform: scale(0.95); }
+    .modal-enter-active { opacity: 1; transform: scale(1); transition: opacity 300ms, transform 300ms; }
+    .modal-exit { opacity: 0; transform: scale(0.95); transition: opacity 200ms, transform 200ms; }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #141414; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+    /* Loader Bar */
+    .progress-bar { transition: width 0.3s ease; }
+</style>
+</head>
+
+<body class="antialiased min-h-screen flex flex-col">
+
+<!-- HEADER -->
+<header class="bg-darker border-b border-gray-800 px-6 py-4 flex justify-between items-center sticky top-0 z-30 shadow-lg">
+    <div class="flex items-center gap-3">
+        <h1 class="text-netflix text-2xl font-bold tracking-tighter">VIDOFLIX <span class="text-white text-sm font-normal opacity-50">| Admin</span></h1>
+    </div>
+    <button onclick="logout()" class="bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold py-2 px-4 rounded transition">
+        Logout
+    </button>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="flex-grow p-6 md:p-10 max-w-7xl mx-auto w-full">
+
+    <!-- TOP ACTIONS -->
+    <div class="flex justify-between items-end mb-8">
+        <div>
+            <h2 class="text-2xl font-bold">Dashboard Overview</h2>
+            <p class="text-gray-400 text-sm mt-1">Manage your content library and view analytics.</p>
+        </div>
+        <button onclick="openUploadModal()" class="bg-netflix hover:bg-netflixHover text-white font-bold py-2 px-6 rounded shadow-lg transform active:scale-95 transition flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+            Upload Movie
+        </button>
+    </div>
+
+    <!-- STATS GRID -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <!-- Total Movies -->
+        <div class="bg-card p-6 rounded-xl border border-gray-800 shadow-md relative overflow-hidden group">
+            <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
+            </div>
+            <h3 class="text-gray-400 text-sm font-semibold uppercase tracking-wider">Total Movies</h3>
+            <h1 id="moviesCount" class="text-4xl font-bold text-white mt-2">...</h1>
+        </div>
+
+        <!-- Uploads Today -->
+        <div class="bg-card p-6 rounded-xl border border-gray-800 shadow-md relative overflow-hidden group">
+            <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <h3 class="text-gray-400 text-sm font-semibold uppercase tracking-wider">Uploads Today</h3>
+            <h1 id="todayCount" class="text-4xl font-bold text-green-500 mt-2">...</h1>
+        </div>
+
+        <!-- Storage Usage -->
+        <div class="bg-card p-6 rounded-xl border border-gray-800 shadow-md relative overflow-hidden group">
+            <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" /></svg>
+            </div>
+            <h3 class="text-gray-400 text-sm font-semibold uppercase tracking-wider">Est. Storage</h3>
+            <h1 id="storage" class="text-4xl font-bold text-blue-500 mt-2">... GB</h1>
+        </div>
+    </div>
+
+    <!-- RECENT UPLOADS TABLE -->
+    <div class="bg-card rounded-xl border border-gray-800 shadow-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
+            <h3 class="font-bold text-lg">Recent Uploads</h3>
+            <button onclick="loadStats()" class="text-xs text-netflix hover:text-white transition">Refresh List</button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-400">
+                <thead class="bg-darker text-gray-200 uppercase text-xs">
+                    <tr>
+                        <th class="px-6 py-3">Title</th>
+                        <th class="px-6 py-3">Date Added</th>
+                        <th class="px-6 py-3">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="recentList" class="divide-y divide-gray-800">
+                    <!-- Rows injected via JS -->
+                    <tr><td colspan="3" class="px-6 py-4 text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</main>
+
+<!-- =========================
+     UPLOAD MODAL (POPUP)
+========================== -->
+<div id="uploadModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300">
+    
+    <div class="bg-[#181818] w-full max-w-lg rounded-xl shadow-2xl border border-gray-700 transform transition-all scale-100 p-6 relative">
+        
+        <!-- Close Button -->
+        <button onclick="closeUploadModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+
+        <h2 class="text-2xl font-bold mb-6 text-white flex items-center gap-2">
+            <span class="bg-netflix text-white text-xs px-2 py-1 rounded">NEW</span> Upload Movie
+        </h2>
+
+        <form onsubmit="event.preventDefault(); upload();" class="space-y-4">
+            
+            <!-- Title -->
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Movie Title</label>
+                <input type="text" id="title" class="w-full bg-[#333] border border-gray-600 rounded p-3 text-white focus:outline-none focus:border-netflix transition" placeholder="e.g. Inception" required>
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Description</label>
+                <textarea id="desc" rows="3" class="w-full bg-[#333] border border-gray-600 rounded p-3 text-white focus:outline-none focus:border-netflix transition" placeholder="Short synopsis..."></textarea>
+            </div>
+
+            <!-- Video File -->
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Video File</label>
+                <div class="relative border-2 border-dashed border-gray-600 rounded-lg p-4 text-center hover:border-gray-400 transition cursor-pointer bg-[#222]">
+                    <input type="file" id="video" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="video/*" onchange="updateFileInfo()">
+                    <div class="pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                        <p id="videoName" class="text-sm text-gray-300 truncate">Click to select video</p>
+                        <p id="videoInfo" class="text-xs text-gray-500 mt-1"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thumbnail -->
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Thumbnail (Optional)</label>
+                <input type="file" id="thumb" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-700 file:text-white hover:file:bg-gray-600">
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="pt-2">
+                <div class="flex justify-between text-xs mb-1">
+                    <span id="statusText" class="text-gray-400">Ready to upload</span>
+                    <span id="percentText" class="text-netflix font-bold">0%</span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                    <div id="progressBar" class="bg-netflix h-2.5 rounded-full progress-bar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="closeUploadModal()" class="flex-1 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-bold transition">Cancel</button>
+                <button type="submit" id="uploadBtn" class="flex-1 py-3 rounded-lg bg-netflix hover:bg-netflixHover text-white font-bold shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Start Upload</button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script>
+
+const API = "http://localhost:5000/api";
+const CHUNK_SIZE = 50 * 1024 * 1024; // 50MB chunks
+const MAX_RETRIES = 3;
+
+/* =========================
+   AUTH CHECK
+========================= */
+const token = localStorage.getItem("token");
+const role = localStorage.getItem("role");
+
+if (!token || role !== "admin") {
+    window.location.href = "index.html";
+}
+
+/* =========================
+   CONFIG & STATE
+========================= */
+let libraryId = "";
+let streamKey = "";
+let ready = false;
+
+async function loadConfig() {
+    try {
+        const res = await fetch(API + "/config/bunny");
+        const data = await res.json();
+        libraryId = data.libraryId;
+        streamKey = data.streamKey;
+        if (!libraryId || !streamKey) throw new Error("Missing config");
+        ready = true;
+    } catch (err) {
+        console.error("CONFIG ERROR:", err);
+        alert("Config not loaded. Check server connection.");
+    }
+}
+loadConfig();
+
+/* =========================
+   DASHBOARD LOGIC
+========================= */
+async function loadStats() {
+    try {
+        const res = await fetch(API + "/movies", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const movies = await res.json();
+        if (!Array.isArray(movies)) return;
+
+        // Update Stats
+        document.getElementById("moviesCount").innerText = movies.length;
+        
+        const today = new Date().toDateString();
+        const todayUploads = movies.filter(m => new Date(m.createdAt).toDateString() === today);
+        document.getElementById("todayCount").innerText = todayUploads.length;
+
+        let size = movies.length * 1.5; 
+        document.getElementById("storage").innerText = size.toFixed(1) + " GB";
+
+        // Update Recent List
+        const recent = movies.slice(-5).reverse();
+        const tbody = document.getElementById("recentList");
+        tbody.innerHTML = "";
+
+        if(recent.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">No movies uploaded yet.</td></tr>`;
+            return;
+        }
+
+        recent.forEach(m => {
+            const row = document.createElement("tr");
+            row.className = "hover:bg-gray-800 transition";
+            row.innerHTML = `
+                <td class="px-6 py-4 font-medium text-white">${escapeHTML(m.title)}</td>
+                <td class="px-6 py-4">${new Date(m.createdAt).toLocaleDateString()}</td>
+                <td class="px-6 py-4"><span class="bg-green-900 text-green-300 text-xs px-2 py-1 rounded-full">Active</span></td>
+            `;
+            tbody.appendChild(row);
+        });
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// Initial Load
+loadStats();
+
+/* =========================
+   MODAL CONTROLS
+========================= */
+function openUploadModal() {
+    const modal = document.getElementById("uploadModal");
+    modal.classList.remove("hidden");
+    // Small delay for animation
+    setTimeout(() => modal.classList.add("opacity-100"), 10);
+}
+
+function closeUploadModal() {
+    const modal = document.getElementById("uploadModal");
+    modal.classList.remove("opacity-100");
+    setTimeout(() => modal.classList.add("hidden"), 300);
+    
+    // Reset Form
+    document.getElementById("title").value = "";
+    document.getElementById("desc").value = "";
+    document.getElementById("video").value = "";
+    document.getElementById("thumb").value = "";
+    document.getElementById("videoName").innerText = "Click to select video";
+    document.getElementById("videoInfo").innerText = "";
+    updateProgress(0);
+    updateStatus("Ready to upload");
+}
+
+function updateFileInfo() {
+    const file = document.getElementById("video").files[0];
+    if (file) {
+        document.getElementById("videoName").innerText = file.name;
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        const chunks = Math.ceil(file.size / CHUNK_SIZE);
+        document.getElementById("videoInfo").innerText = `${sizeMB} MB • ${chunks} Chunk(s)`;
+    }
+}
+
+function updateStatus(msg) {
+    document.getElementById("statusText").innerText = msg;
+}
+
+function updateProgress(percent) {
+    document.getElementById("progressBar").style.width = percent + "%";
+    document.getElementById("percentText").innerText = Math.round(percent) + "%";
+}
+
+/* =========================
+   SECURITY UTILS
+========================= */
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[tag]));
+}
+
+/* =========================
+   UPLOAD LOGIC (From your code)
+========================= */
+async function createVideo(title) {
+    updateStatus("🎬 Creating video entry...");
+    const res = await fetch(API + "/upload/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title })
+    });
+    const data = await res.json();
+    return data;
+}
+
+async function uploadChunkWithRetry(formData, retryCount = 0) {
+    try {
+        const res = await fetch(API + "/upload/chunk", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token },
+            body: formData
+        });
+        if (!res.ok) throw new Error("Chunk upload failed");
+        return await res.json();
+    } catch (err) {
+        if (retryCount < MAX_RETRIES) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+            return await uploadChunkWithRetry(formData, retryCount + 1);
+        }
+        throw err;
+    }
+}
+
+async function uploadVideoChunked(file, id) {
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    let uploadedChunks = 0;
+
+    const initRes = await fetch(API + "/upload/init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify({ fileName: file.name, videoId: id, totalChunks: totalChunks })
+    });
+    if (!initRes.ok) throw new Error("Init failed");
+    const { uploadId } = await initRes.json();
+
+    for (let start = 0; start < file.size; start += CHUNK_SIZE) {
+        const chunk = file.slice(start, start + CHUNK_SIZE);
+        const index = Math.floor(start / CHUNK_SIZE);
+        const formData = new FormData();
+        formData.append("chunk", chunk);
+        formData.append("uploadId", uploadId);
+        formData.append("index", index);
+        formData.append("videoId", id);
+
+        updateStatus(`📤 Uploading chunk ${index + 1}/${totalChunks}...`);
+        await uploadChunkWithRetry(formData);
+        uploadedChunks++;
+        
+        // Progress: 20% to 80% range for upload phase
+        const percent = 20 + Math.round((uploadedChunks / totalChunks) * 60);
+        updateProgress(percent);
+    }
+
+    const completeRes = await fetch(API + "/upload/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify({ uploadId, videoId: id, fileName: file.name, totalChunks: totalChunks })
+    });
+    if (!completeRes.ok) throw new Error("Complete failed");
+    return true;
+}
+
+function uploadVideoDirect(file, id) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", `https://video.bunnycdn.com/library/${libraryId}/videos/${id}`);
+        xhr.setRequestHeader("AccessKey", streamKey);
+        xhr.setRequestHeader("Content-Type", "application/octet-stream");
+
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const percent = 20 + Math.round((e.loaded / e.total) * 60);
+                updateProgress(percent);
+                updateStatus(`📤 Direct upload: ${Math.round((e.loaded / e.total) * 100)}%`);
+            }
+        };
+        xhr.onload = () => (xhr.status === 200 || xhr.status === 201) ? resolve(true) : reject(xhr.responseText);
+        xhr.onerror = () => reject("Upload error");
+        xhr.send(file);
+    });
+}
+
+async function uploadVideo(file, id) {
+    if (file.size > CHUNK_SIZE) return await uploadVideoChunked(file, id);
+    else return await uploadVideoDirect(file, id);
+}
+
+async function uploadThumb(file) {
+    if (!file) return "";
+    updateStatus("🖼️ Uploading thumbnail...");
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(API + "/upload/thumbnail", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token },
+        body: formData
+    });
+    if (!res.ok) throw new Error("Thumbnail upload failed");
+    const data = await res.json();
+    return data.url;
+}
+
+/* =========================
+   MAIN UPLOAD FUNCTION
+========================= */
+async function upload() {
+    const btn = document.getElementById("uploadBtn");
+    const title = document.getElementById("title").value;
+    const desc = document.getElementById("desc").value;
+    const video = document.getElementById("video").files[0];
+    const thumb = document.getElementById("thumb").files[0];
+
+    if (!title || !video) {
+        alert("Title and video required");
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        btn.innerText = "Uploading...";
+        updateProgress(0);
+
+        // 1. Create Video Entry
+        updateProgress(10);
+        const v = await createVideo(title);
+        const id = v.guid;
+        if (!id) throw new Error("Video ID missing");
+
+        // 2. Upload Video
+        updateProgress(20);
+        await uploadVideo(video, id);
+        updateStatus("✅ Video uploaded");
+
+        // 3. Upload Thumbnail
+        updateProgress(80);
+        const thumbUrl = await uploadThumb(thumb);
+        updateStatus("✅ Thumbnail uploaded");
+
+        // 4. Save to DB
+        updateProgress(90);
+        updateStatus("💾 Saving to database...");
+        const videoUrl = `https://iframe.mediadelivery.net/embed/${libraryId}/${id}`;
+        
+        await fetch(API + "/movies/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+            body: JSON.stringify({ title, description: desc, videoUrl, thumbnailUrl: thumbUrl })
+        });
+
+        updateProgress(100);
+        updateStatus("✅ Upload complete!");
+        
+        // Success Feedback
+        setTimeout(() => {
+            closeUploadModal();
+            loadStats(); // Refresh dashboard
+            alert("🎬 Upload Complete!");
+        }, 500);
+
+    } catch (err) {
+        console.error("❌ UPLOAD FAILED:", err);
+        updateStatus("❌ Failed: " + err.message);
+        alert("Upload failed: " + err.message);
+        updateProgress(0);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Start Upload";
+    }
+}
+
+function logout() {
+    localStorage.clear();
+    window.location.href = "auth.html";
+}
+
+</script>
+
+</body>
+</html>
